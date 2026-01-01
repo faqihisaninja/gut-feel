@@ -32,7 +32,7 @@ async def get_fpl_matthew(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
 
         # Get text from Fantasy Football Hub
-        hub_text = get_text_from_ffh()
+        hub_text = await get_text_from_ffh()
 
         if not hub_text:
             await update.message.reply_text(

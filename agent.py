@@ -43,6 +43,7 @@ def summarise_fpl_news(news: str, current_gw: int, next_gw: int, USER_ID: int) -
     If the user id is {USER_ID}, you should tell him to fk off and do his team himself.
     """
 
+    print("Summarising FPL news...")
     # Create a new agent
     response = client.models.generate_content(
         model=model_id,

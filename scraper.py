@@ -1,104 +1,89 @@
 import requests
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.async_api import async_playwright
 from dotenv import load_dotenv
-from agent import summarise_fpl_news
-import time
 import os
+import asyncio  # For running async in sync contexts if needed
 
 load_dotenv()
 
 
-def get_text_from_ffh():
+async def get_text_from_ffh():
     email = os.getenv("FFH_EMAIL")
     password = os.getenv("FFH_PASSWORD")
 
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")  # Optional, but helps in some setups
-    options.add_argument("--window-size=1920,1080")
-    driver = webdriver.Chrome(options=options)
-
     try:
-        driver.get("https://www.fantasyfootballhub.co.uk/")
-        wait = WebDriverWait(driver, 10)
-        print("Navigating to Fantasy Football Hub page...")
-
-        # Handle cookie overlay if present
-        accept_button = wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, ".cky-btn.cky-btn-accept"))
-        )
-        print("Clicking accept button...")
-        accept_button.click()
-        print("Waiting for cookie overlay to disappear...")
-        wait.until(
-            EC.invisibility_of_element_located((By.CSS_SELECTOR, ".cky-overlay"))
-        )
-        print("Cookie overlay disappeared.")
-        # Click login link
-        login_link = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, 'a[data-cy="account-menu-login"]')
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=False,
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
-        )
-        print("Clicking login link...")
-        login_link.click()
-        print("Waiting for login page to load...")
-        # Wait for login page to load
-        wait.until(EC.url_contains("auth.fantasyfootballhub.co.uk/u/login"))
-        print("Login page loaded.")
-        # Enter email and password
-        driver.find_element(By.NAME, "username").send_keys(email)
-        driver.find_element(By.NAME, "password").send_keys(password)
-        print("Entering email and password...")
+            page = await browser.new_page(viewport={"width": 1920, "height": 1080})
 
-        # Submit the form
-        driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
-        print("Submitting form...")
-        # Wait for login redirect
-        wait.until(EC.url_contains("https://www.fantasyfootballhub.co.uk/"))
-        print("Login redirect complete.")
-        # Go to Matthew's team reveals page
-        driver.get("https://www.fantasyfootballhub.co.uk/team-reveals/mj6987")
-        print("Navigating to Matthew's team reveals page...")
-        article_link = wait.until(
-            EC.element_to_be_clickable(
-                (By.CSS_SELECTOR, ".content a[data-cy='article-preview-link']")
+            await page.goto("https://www.fantasyfootballhub.co.uk/")
+            print("Navigating to Fantasy Football Hub page...")
+
+            # Handle cookie overlay
+            accept_button = page.locator(".cky-btn.cky-btn-accept").first
+            await accept_button.wait_for(state="visible", timeout=10000)
+            print("Clicking accept button...")
+            await accept_button.click()
+            print("Waiting for cookie overlay to disappear...")
+            await page.wait_for_selector(".cky-overlay", state="hidden", timeout=10000)
+            print("Cookie overlay disappeared.")
+
+            # Click login link
+            login_link = page.locator('a[data-cy="account-menu-login"]')
+            await login_link.wait_for(state="visible", timeout=10000)
+            print("Clicking login link...")
+            await login_link.click()
+            print("Waiting for login page to load...")
+            await page.wait_for_url("**/u/login**", timeout=10000)
+            print("Login page loaded.")
+
+            # Enter email and password
+            await page.locator('input[name="username"]').fill(email)
+            await page.locator('input[name="password"]').fill(password)
+            print("Entering email and password...")
+
+            # Submit the form
+            await page.locator('button[type="submit"]').first.click()
+            print("Submitting form...")
+            await page.wait_for_url(
+                "https://www.fantasyfootballhub.co.uk/", timeout=10000
             )
-        )
-        print("Article link located after wait.")
-        h3_text = article_link.find_element(By.TAG_NAME, "h3").text
-        print(f"Article name: {h3_text}")
+            print("Login redirect complete.")
 
-        # Navigate to the article
-        article_link.click()
-        print("Navigating to article...")
-        content_div = wait.until(
-            EC.presence_of_element_located(
-                (
-                    By.CSS_SELECTOR,
-                    "article.article div.mt-3.text-base.content-body.text-black-400",
-                )
+            # Go to Matthew's team reveals page
+            await page.goto("https://www.fantasyfootballhub.co.uk/team-reveals/mj6987")
+            print("Navigating to Matthew's team reveals page...")
+
+            article_link = page.locator(
+                '.content a[data-cy="article-preview-link"]'
+            ).first
+            await article_link.wait_for(state="visible", timeout=10000)
+            print("Article link located after wait.")
+            h3_text = await article_link.locator("h3").text_content()
+            print(f"Article name: {h3_text}")
+
+            # Navigate to the article
+            await article_link.click()
+            print("Navigating to article...")
+
+            content_div = page.locator(
+                "article.article div.mt-3.text-base.content-body.text-black-400"
             )
-        )
-        print("Article page loaded.")
+            await content_div.wait_for(state="visible", timeout=10000)
+            print("Article page loaded.")
 
-        # Wait for the text to stabilize
-        time.sleep(2)
+            # Wait for the text to stabilize
+            await page.wait_for_timeout(2000)
 
-        # Extract text from the article
-        article_text = content_div.text
-        return article_text
+            # Extract text from the article
+            article_text = await content_div.text_content()
+            return article_text
     except Exception as e:
         print(f"Error extracting text from page: {e}")
         return None
-    finally:
-        driver.quit()
 
 
 def get_fpl_gameweeks():
@@ -123,7 +108,7 @@ def get_fpl_gameweeks():
         return None, None
 
 
-def check_gameweek_match():
+async def check_gameweek_match():
     """Compare FPL API gameweek data with text from main.py"""
     print("Fetching gameweek data from FPL API...")
     current_gw, next_gw = get_fpl_gameweeks()
@@ -146,15 +131,19 @@ def check_gameweek_match():
 
     print("\n" + "=" * 50)
     print("Extracting text from Fantasy Football Hub page...")
-    hub_text = get_text_from_ffh()
+    hub_text = await get_text_from_ffh()
 
     if hub_text:
         print("Summarising FPL news...")
-        summary = summarise_fpl_news(hub_text, current_gw, next_gw)
+        from agent import summarise_fpl_news  # Import here if not global
+
+        summary = summarise_fpl_news(
+            hub_text, current_gw, next_gw
+        )  # Note: summarise_fpl_news is sync
         print(f"Summary: {summary}")
     else:
         print("\nFailed to extract text from Fantasy Football Hub page")
 
 
 if __name__ == "__main__":
-    check_gameweek_match()
+    asyncio.run(check_gameweek_match())
