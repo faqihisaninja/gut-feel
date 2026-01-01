@@ -1,0 +1,15 @@
+services:
+    - type: web
+      name: gut-feel
+      env: python
+      buildCommand: pip install -r requirements.txt
+      startCommand: python telegram_bot.py
+      envVars:
+          - key: TELEGRAM_BOT_TOKEN
+            sync: false
+          - key: GOOGLE_STUDIO_API_KEY
+            sync: false
+          - key: FFH_EMAIL
+            sync: false
+          - key: FFH_PASSWORD
+            sync: false
