@@ -102,22 +102,28 @@ def get_fpl_gameweeks():
         )
         next_gameweek = next((event for event in events if event.get("is_next")), None)
 
-        return current_gameweek, next_gameweek
+        # Extract deadline times
+        current_deadline = (
+            current_gameweek.get("deadline_time") if current_gameweek else None
+        )
+        next_deadline = next_gameweek.get("deadline_time") if next_gameweek else None
+
+        return current_gameweek, next_gameweek, current_deadline, next_deadline
     except Exception as e:
         print(f"Error fetching FPL API data: {e}")
-        return None, None
+        return None, None, None, None
 
 
 async def check_gameweek_match():
     """Compare FPL API gameweek data with text from main.py"""
     print("Fetching gameweek data from FPL API...")
-    current_gw, next_gw = get_fpl_gameweeks()
+    current_gw, next_gw, current_deadline, next_deadline = get_fpl_gameweeks()
 
     if current_gw:
         print(f"\nCurrent Gameweek from FPL API:")
         print(f"  ID: {current_gw['id']}")
         print(f"  Name: {current_gw['name']}")
-        print(f"  Deadline: {current_gw.get('deadline_time', 'N/A')}")
+        print(f"  Deadline: {current_deadline or 'N/A'}")
     else:
         print("\nNo current gameweek found in FPL API")
 
@@ -125,7 +131,7 @@ async def check_gameweek_match():
         print(f"\nNext Gameweek from FPL API:")
         print(f"  ID: {next_gw['id']}")
         print(f"  Name: {next_gw['name']}")
-        print(f"  Deadline: {next_gw.get('deadline_time', 'N/A')}")
+        print(f"  Deadline: {next_deadline or 'N/A'}")
     else:
         print("\nNo next gameweek found in FPL API")
 

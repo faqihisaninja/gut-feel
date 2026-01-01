@@ -1,12 +1,21 @@
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+from datetime import datetime, timezone
+
 import os
 
 load_dotenv()
 
 
-def summarise_fpl_news(news: str, current_gw: int, next_gw: int, USER_ID: int) -> str:
+def summarise_fpl_news(
+    news: str,
+    current_gw: int,
+    next_gw: int,
+    current_deadline: str,
+    next_deadline: str,
+    USER_ID: int,
+) -> str:
     """Initialize Google services and AI agent"""
     # API key
     api_key = os.getenv("GOOGLE_STUDIO_API_KEY")
@@ -14,6 +23,9 @@ def summarise_fpl_news(news: str, current_gw: int, next_gw: int, USER_ID: int) -
 
     # Model ID
     model_id = "gemini-2.5-flash"
+
+    # Get the current UTC time as a timezone-aware object
+    now_utc = datetime.now(timezone.utc)
 
     # System prompt
     system_prompt = f"""
@@ -23,7 +35,14 @@ def summarise_fpl_news(news: str, current_gw: int, next_gw: int, USER_ID: int) -
     You will also be given the current and next gameweek.
     Current gameweek: {current_gw}.
     Next gameweek: {next_gw}.
+    Current deadline: {current_deadline}.
+    Next deadline: {next_deadline}.
+    Time now: {now_utc}.
     If the text is not related to the current or next gameweek, you should mention that it is not related to the current or next gameweek.
+    If the text is related to the current gameweek, check if the deadline has passed.
+    If it has, you should mention that the deadline has passed and tell the user no point checking cause the deadline has passed. Give them just the quick summary of the text in case he wants to check.
+    If the text is related to the next gameweek, check the deadline and remind the user of the deadline.
+
 
     Your role:
     - Summarize key transfer moves (players in/out, prices, timing)
