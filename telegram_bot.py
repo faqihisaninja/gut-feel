@@ -1,5 +1,7 @@
 import os
 from dotenv import load_dotenv
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, Request, Response
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -12,6 +14,18 @@ from ffh_scraper import get_text_from_ffh, get_fpl_gameweeks
 from agent import summarise_fpl_news
 
 load_dotenv()
+
+
+# Get bot token from environment variables
+bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+
+if not bot_token:
+    raise ValueError(
+        "TELEGRAM_BOT_TOKEN not found in environment variables. Please set it in your .env file."
+    )
+
+# Create the Application
+application = Application.builder().token(bot_token).build()
 
 
 async def get_fpl_matthew(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -74,32 +88,65 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
 
 
-def main() -> None:
-    """Start the bot"""
-    # Get bot token from environment variables
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+# def main() -> None:
+#     """Start the bot"""
+#     # Get bot token from environment variables
+#     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
 
-    if not bot_token:
-        raise ValueError(
-            "TELEGRAM_BOT_TOKEN not found in environment variables. Please set it in your .env file."
-        )
+#     if not bot_token:
+#         raise ValueError(
+#             "TELEGRAM_BOT_TOKEN not found in environment variables. Please set it in your .env file."
+#         )
 
-    # Create the Application
-    application = Application.builder().token(bot_token).build()
+#     # Create the Application
+#     application = Application.builder().token(bot_token).build()
 
-    # Register command handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("get_fpl_matthew", get_fpl_matthew))
+#     # Register command handlers
+#     application.add_handler(CommandHandler("start", start))
+#     application.add_handler(CommandHandler("get_fpl_matthew", get_fpl_matthew))
 
-    # Register message handler for non-command messages
-    application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
-    )
+#     # Register message handler for non-command messages
+#     application.add_handler(
+#         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+#     )
 
-    # Run the bot
-    print("Bot is running...")
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+#     # Run the bot
+#     print("Bot is running...")
+#     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
+
+# Register command handlers
+application.add_handler(CommandHandler("start", start))
+application.add_handler(CommandHandler("get_fpl_matthew", get_fpl_matthew))
+
+# Register message handler for non-command messages
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+
+# FastAPI app
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await application.initialize()
+    yield
+    await application.shutdown()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+# Webhook endpoint
+@app.post("/webhook")
+async def webhook(request: Request):
+    update_data = await request.json()
+    update = Update.de_json(update_data, application.bot)
+    await application.process_update(update)
+    return Response(status_code=200)
+
+
+# Health check for Render
+@app.get("/")
+async def health():
+    return "Bot is running!"
