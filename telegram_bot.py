@@ -8,7 +8,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from scraper import get_text_from_ffh, get_fpl_gameweeks
+from ffh_scraper import get_text_from_ffh, get_fpl_gameweeks
 from agent import summarise_fpl_news
 
 load_dotenv()
@@ -23,7 +23,7 @@ async def get_fpl_matthew(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     try:
         # Get gameweek information
-        current_gw, next_gw = get_fpl_gameweeks()
+        current_gw, next_gw, current_deadline, next_deadline = get_fpl_gameweeks()
 
         if not current_gw and not next_gw:
             await update.message.reply_text(
@@ -32,7 +32,7 @@ async def get_fpl_matthew(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
 
         # Get text from Fantasy Football Hub
-        hub_text = get_text_from_ffh()
+        hub_text = await get_text_from_ffh()
 
         if not hub_text:
             await update.message.reply_text(
@@ -41,7 +41,9 @@ async def get_fpl_matthew(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
 
         # Summarize the FPL news
-        summary = summarise_fpl_news(hub_text, current_gw, next_gw, USER_ID)
+        summary = summarise_fpl_news(
+            hub_text, current_gw, next_gw, current_deadline, next_deadline, USER_ID
+        )
 
         # Send the summary (Telegram has a 4096 character limit per message)
         if len(summary) > 4096:
