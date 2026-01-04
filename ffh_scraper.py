@@ -118,7 +118,7 @@ def get_fpl_gameweeks():
         return None, None, None, None
 
 
-async def check_gameweek_match():
+async def main_scraper():
     """Compare FPL API gameweek data with text from main.py"""
     print("Fetching gameweek data from FPL API...")
     current_gw, next_gw, current_deadline, next_deadline = get_fpl_gameweeks()
@@ -157,4 +157,4 @@ async def check_gameweek_match():
 
 
 if __name__ == "__main__":
-    asyncio.run(check_gameweek_match())
+    asyncio.run(main_scraper())

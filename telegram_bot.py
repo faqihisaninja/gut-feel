@@ -8,7 +8,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from scraper import get_text_from_ffh, get_fpl_gameweeks
+from ffh_scraper import get_text_from_ffh, get_fpl_gameweeks
 from agent import summarise_fpl_news
 
 load_dotenv()
