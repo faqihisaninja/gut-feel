@@ -4,7 +4,7 @@ set -e
 pip install -r requirements.txt
 
 # Install Playwright with system dependencies
-playwright install chromium --with-deps
+playwright install chromium
 
 # Store/pull Playwright cache with build cache
 if [[ ! -d $PLAYWRIGHT_BROWSERS_PATH ]]; then 
