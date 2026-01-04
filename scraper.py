@@ -1,5 +1,6 @@
 import requests
 from playwright.async_api import async_playwright
+from playwright_stealth import Stealth
 from dotenv import load_dotenv
 import os
 import asyncio  # For running async in sync contexts if needed
@@ -12,9 +13,9 @@ async def get_text_from_ffh():
     password = os.getenv("FFH_PASSWORD")
 
     try:
-        async with async_playwright() as p:
+        async with Stealth().use_async(async_playwright()) as p:
             browser = await p.chromium.launch(
-                headless=False,
+                headless=True,
                 args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
             )
             page = await browser.new_page(viewport={"width": 1920, "height": 1080})
@@ -43,7 +44,10 @@ async def get_text_from_ffh():
             # Enter email and password
             await page.locator('input[name="username"]').fill(email)
             await page.locator('input[name="password"]').fill(password)
+            await page.wait_for_timeout(2000)
+
             print("Entering email and password...")
+            await page.wait_for_timeout(2000)
 
             # Submit the form
             await page.locator('button[type="submit"]').first.click()
@@ -118,6 +122,7 @@ async def check_gameweek_match():
     """Compare FPL API gameweek data with text from main.py"""
     print("Fetching gameweek data from FPL API...")
     current_gw, next_gw, current_deadline, next_deadline = get_fpl_gameweeks()
+    USER_ID = 102528399
 
     if current_gw:
         print(f"\nCurrent Gameweek from FPL API:")
@@ -144,7 +149,7 @@ async def check_gameweek_match():
         from agent import summarise_fpl_news  # Import here if not global
 
         summary = summarise_fpl_news(
-            hub_text, current_gw, next_gw
+            hub_text, current_gw, next_gw, current_deadline, next_deadline, USER_ID
         )  # Note: summarise_fpl_news is sync
         print(f"Summary: {summary}")
     else:
