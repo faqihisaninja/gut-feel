@@ -23,29 +23,34 @@ async def get_text_from_ffh():
             await page.goto("https://www.fantasyfootballhub.co.uk/")
             print("Navigating to Fantasy Football Hub page...")
 
-            # Handle cookie overlay
+            # Handle cookie overlay if present (conditional for regions)
             accept_button = page.locator(".cky-btn.cky-btn-accept").first
-            await accept_button.wait_for(state="visible", timeout=10000)
-            print("Clicking accept button...")
-            await accept_button.click()
-            print("Waiting for cookie overlay to disappear...")
-            await page.wait_for_selector(".cky-overlay", state="hidden", timeout=10000)
-            print("Cookie overlay disappeared.")
+            if await accept_button.count() > 0:
+                print("Cookie overlay detected. Clicking accept...")
+                await accept_button.wait_for(
+                    state="visible", timeout=15000
+                )  # Increased timeout for cloud variability
+                await accept_button.click()
+                print("Waiting for cookie overlay to disappear...")
+                await page.wait_for_selector(
+                    ".cky-overlay", state="hidden", timeout=15000
+                )
+                print("Cookie overlay handled.")
+            else:
+                print("No cookie overlay detected. Proceeding...")
 
             # Click login link
             login_link = page.locator('a[data-cy="account-menu-login"]')
-            await login_link.wait_for(state="visible", timeout=10000)
+            await login_link.wait_for(state="visible", timeout=15000)
             print("Clicking login link...")
             await login_link.click()
             print("Waiting for login page to load...")
-            await page.wait_for_url("**/u/login**", timeout=10000)
+            await page.wait_for_url("**/u/login**", timeout=15000)
             print("Login page loaded.")
 
             # Enter email and password
             await page.locator('input[name="username"]').fill(email)
             await page.locator('input[name="password"]').fill(password)
-            await page.wait_for_timeout(2000)
-
             print("Entering email and password...")
             await page.wait_for_timeout(2000)
 
@@ -53,7 +58,7 @@ async def get_text_from_ffh():
             await page.locator('button[type="submit"]').first.click()
             print("Submitting form...")
             await page.wait_for_url(
-                "https://www.fantasyfootballhub.co.uk/", timeout=10000
+                "https://www.fantasyfootballhub.co.uk/", timeout=15000
             )
             print("Login redirect complete.")
 
@@ -64,8 +69,8 @@ async def get_text_from_ffh():
             article_link = page.locator(
                 '.content a[data-cy="article-preview-link"]'
             ).first
-            await article_link.wait_for(state="visible", timeout=10000)
-            print("Article link located after wait.")
+            await article_link.wait_for(state="visible", timeout=15000)
+            print("Article link located.")
             h3_text = await article_link.locator("h3").text_content()
             print(f"Article name: {h3_text}")
 
@@ -73,18 +78,24 @@ async def get_text_from_ffh():
             await article_link.click()
             print("Navigating to article...")
 
+            # Wait for article content div
             content_div = page.locator(
                 "article.article div.mt-3.text-base.content-body.text-black-400"
             )
-            await content_div.wait_for(state="visible", timeout=10000)
-            print("Article page loaded.")
+            await content_div.wait_for(state="visible", timeout=15000)
+            print("Article content div visible.")
 
-            # Wait for the text to stabilize
-            await page.wait_for_timeout(2000)
+            # Explicit waits for full load (addresses the 'bump')
+            await page.wait_for_load_state(
+                "networkidle"
+            )  # Wait for no network activity >500ms
+            await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
 
             # Extract text from the article
             article_text = await content_div.text_content()
+            print("Article text extracted successfully.")
             return article_text
+
     except Exception as e:
         print(f"Error extracting text from page: {e}")
         return None
