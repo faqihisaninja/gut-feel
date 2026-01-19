@@ -1,6 +1,6 @@
 import requests
 from telegram import Update
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, expect
 from playwright_stealth import Stealth
 from dotenv import load_dotenv
 import os
@@ -27,10 +27,6 @@ async def get_text_from_ffh(update: Update):
             )
             print("Navigating to Fantasy Football Hub auth page...")
 
-            # # Explicit waits for full load (addresses the 'bump')
-            # await page.wait_for_load_state(
-            #     "networkidle"
-            # )  # Wait for no network activity >500ms
             await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
             await update.message.reply_text("Page loaded. Proceeding to login...")
 
@@ -58,7 +54,9 @@ async def get_text_from_ffh(update: Update):
             article_link = page.locator(
                 '.content a[data-cy="article-preview-link"]'
             ).first
-            await article_link.wait_for(state="visible", timeout=15000)
+            # Enhanced: Chain visible + enabled for interactability (replaces your expect + wait_for)
+            await expect(article_link).to_be_visible(timeout=30000)
+            await expect(article_link).to_be_enabled(timeout=15000)  # Ensures clickable
             await update.message.reply_text("Article link located.")
             h3_text = await article_link.locator("h3").text_content()
             await update.message.reply_text(f"Article name: {h3_text}")
@@ -69,16 +67,14 @@ async def get_text_from_ffh(update: Update):
                 await update.message.reply_text(
                     "Cookie overlay detected. Clicking accept..."
                 )
-                await accept_button.wait_for(
-                    state="visible", timeout=15000
-                )  # Increased timeout for cloud variability
+                # Replace wait_for with expect
+                await expect(accept_button).to_be_visible(timeout=15000)
                 await accept_button.click()
                 await update.message.reply_text(
                     "Waiting for cookie overlay to disappear..."
                 )
-                await page.wait_for_selector(
-                    ".cky-overlay", state="hidden", timeout=15000
-                )
+                # Replace wait_for_selector(state="hidden") with expect hidden
+                await expect(page.locator(".cky-overlay")).to_be_hidden(timeout=15000)
                 await update.message.reply_text("Cookie overlay handled.")
             else:
                 await update.message.reply_text(
@@ -93,13 +89,10 @@ async def get_text_from_ffh(update: Update):
             content_div = page.locator(
                 "article.article div.mt-3.text-base.content-body.text-black-400"
             )
-            await content_div.wait_for(state="visible", timeout=15000)
+            # Replace wait_for with chained expects: visible
+            await expect(content_div).to_be_visible(timeout=15000)
             await update.message.reply_text("Article content div visible.")
 
-            # # Explicit waits for full load (addresses the 'bump')
-            # await page.wait_for_load_state(
-            #     "networkidle"
-            # )  # Wait for no network activity >500ms
             await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
 
             # Extract text from the article
