@@ -53,6 +53,7 @@ async def get_text_from_ffh(update: Update):
             await update.message.reply_text(
                 "Navigating to Matthew's team reveals page..."
             )
+            await page.wait_for_timeout(3000)
 
             article_link = page.locator(
                 '.content a[data-cy="article-preview-link"]'
