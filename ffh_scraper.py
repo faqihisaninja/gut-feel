@@ -1,4 +1,5 @@
 import requests
+from telegram import Update
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 from dotenv import load_dotenv
@@ -8,7 +9,7 @@ import asyncio  # For running async in sync contexts if needed
 load_dotenv()
 
 
-async def get_text_from_ffh():
+async def get_text_from_ffh(update: Update):
     email = os.getenv("FFH_EMAIL")
     password = os.getenv("FFH_PASSWORD")
 
@@ -21,6 +22,9 @@ async def get_text_from_ffh():
             page = await browser.new_page(viewport={"width": 1920, "height": 1080})
 
             await page.goto("https://www.fantasyfootballhub.co.uk/auth/login")
+            await update.message.reply_text(
+                "Navigating to Fantasy Football Hub auth page..."
+            )
             print("Navigating to Fantasy Football Hub auth page...")
 
             # # Explicit waits for full load (addresses the 'bump')
@@ -28,60 +32,68 @@ async def get_text_from_ffh():
             #     "networkidle"
             # )  # Wait for no network activity >500ms
             await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
-            print("Page loaded. Proceeding to login...")
+            await update.message.reply_text("Page loaded. Proceeding to login...")
 
             # Enter email and password
             await page.locator('input[name="username"]').fill(email)
             await page.locator('input[name="password"]').fill(password)
-            print("Entering email and password...")
+            await update.message.reply_text("Entering email and password...")
             await page.wait_for_timeout(2000)
 
             # Submit the form
             await page.locator('button[type="submit"]').first.click()
-            print("Submitting form...")
+            await update.message.reply_text("Submitting form...")
             await page.wait_for_url(
                 "https://www.fantasyfootballhub.co.uk/", timeout=15000
             )
-            print("Login redirect complete.")
+            await update.message.reply_text("Login redirect complete.")
 
             # Go to Matthew's team reveals page
             await page.goto("https://www.fantasyfootballhub.co.uk/team-reveals/mj6987")
-            print("Navigating to Matthew's team reveals page...")
+            await update.message.reply_text(
+                "Navigating to Matthew's team reveals page..."
+            )
 
             article_link = page.locator(
                 '.content a[data-cy="article-preview-link"]'
             ).first
             await article_link.wait_for(state="visible", timeout=15000)
-            print("Article link located.")
+            await update.message.reply_text("Article link located.")
             h3_text = await article_link.locator("h3").text_content()
-            print(f"Article name: {h3_text}")
+            await update.message.reply_text(f"Article name: {h3_text}")
 
             # Handle cookie overlay if present (conditional for regions)
             accept_button = page.locator(".cky-btn.cky-btn-accept").first
             if await accept_button.count() > 0:
-                print("Cookie overlay detected. Clicking accept...")
+                await update.message.reply_text(
+                    "Cookie overlay detected. Clicking accept..."
+                )
                 await accept_button.wait_for(
                     state="visible", timeout=15000
                 )  # Increased timeout for cloud variability
                 await accept_button.click()
-                print("Waiting for cookie overlay to disappear...")
+                await update.message.reply_text(
+                    "Waiting for cookie overlay to disappear..."
+                )
                 await page.wait_for_selector(
                     ".cky-overlay", state="hidden", timeout=15000
                 )
-                print("Cookie overlay handled.")
+                await update.message.reply_text("Cookie overlay handled.")
             else:
-                print("No cookie overlay detected. Proceeding...")
+                await update.message.reply_text(
+                    "No cookie overlay detected. Proceeding..."
+                )
 
             # Navigate to the article
             await article_link.click()
-            print("Navigating to article...")
+            await update.message.reply_text("Navigating to article...")
 
             # Wait for article content div
             content_div = page.locator(
                 "article.article div.mt-3.text-base.content-body.text-black-400"
             )
             await content_div.wait_for(state="visible", timeout=15000)
-            print("Article content div visible.")
+            await update.message.reply_text("Article content div visible.")
 
             # # Explicit waits for full load (addresses the 'bump')
             # await page.wait_for_load_state(
@@ -91,11 +103,11 @@ async def get_text_from_ffh():
 
             # Extract text from the article
             article_text = await content_div.text_content()
-            print("Article text extracted successfully.")
+            await update.message.reply_text("Article text extracted successfully.")
             return article_text
 
     except Exception as e:
-        print(f"Error extracting text from page: {e}")
+        await update.message.reply_text(f"Error extracting text from page: {e}")
         return None
 
 
