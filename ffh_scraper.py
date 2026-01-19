@@ -20,40 +20,15 @@ async def get_text_from_ffh():
             )
             page = await browser.new_page(viewport={"width": 1920, "height": 1080})
 
-            await page.goto("https://www.fantasyfootballhub.co.uk/")
-            print("Navigating to Fantasy Football Hub page...")
+            await page.goto("https://www.fantasyfootballhub.co.uk/auth/login")
+            print("Navigating to Fantasy Football Hub auth page...")
 
-            # Handle cookie overlay if present (conditional for regions)
-            accept_button = page.locator(".cky-btn.cky-btn-accept").first
-            if await accept_button.count() > 0:
-                print("Cookie overlay detected. Clicking accept...")
-                await accept_button.wait_for(
-                    state="visible", timeout=15000
-                )  # Increased timeout for cloud variability
-                await accept_button.click()
-                print("Waiting for cookie overlay to disappear...")
-                await page.wait_for_selector(
-                    ".cky-overlay", state="hidden", timeout=15000
-                )
-                print("Cookie overlay handled.")
-            else:
-                print("No cookie overlay detected. Proceeding...")
-
-            # Explicit waits for full load (addresses the 'bump')
-            await page.wait_for_load_state(
-                "networkidle"
-            )  # Wait for no network activity >500ms
+            # # Explicit waits for full load (addresses the 'bump')
+            # await page.wait_for_load_state(
+            #     "networkidle"
+            # )  # Wait for no network activity >500ms
             await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
             print("Page loaded. Proceeding to login...")
-
-            # Click login link
-            login_link = page.locator('a[data-cy="account-menu-login"]')
-            await login_link.wait_for(state="visible", timeout=15000)
-            print("Clicking login link...")
-            await login_link.click()
-            print("Waiting for login page to load...")
-            await page.wait_for_url("**/u/login**", timeout=15000)
-            print("Login page loaded.")
 
             # Enter email and password
             await page.locator('input[name="username"]').fill(email)
@@ -81,6 +56,22 @@ async def get_text_from_ffh():
             h3_text = await article_link.locator("h3").text_content()
             print(f"Article name: {h3_text}")
 
+            # Handle cookie overlay if present (conditional for regions)
+            accept_button = page.locator(".cky-btn.cky-btn-accept").first
+            if await accept_button.count() > 0:
+                print("Cookie overlay detected. Clicking accept...")
+                await accept_button.wait_for(
+                    state="visible", timeout=15000
+                )  # Increased timeout for cloud variability
+                await accept_button.click()
+                print("Waiting for cookie overlay to disappear...")
+                await page.wait_for_selector(
+                    ".cky-overlay", state="hidden", timeout=15000
+                )
+                print("Cookie overlay handled.")
+            else:
+                print("No cookie overlay detected. Proceeding...")
+
             # Navigate to the article
             await article_link.click()
             print("Navigating to article...")
@@ -92,10 +83,10 @@ async def get_text_from_ffh():
             await content_div.wait_for(state="visible", timeout=15000)
             print("Article content div visible.")
 
-            # Explicit waits for full load (addresses the 'bump')
-            await page.wait_for_load_state(
-                "networkidle"
-            )  # Wait for no network activity >500ms
+            # # Explicit waits for full load (addresses the 'bump')
+            # await page.wait_for_load_state(
+            #     "networkidle"
+            # )  # Wait for no network activity >500ms
             await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
 
             # Extract text from the article
