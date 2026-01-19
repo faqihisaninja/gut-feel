@@ -39,6 +39,13 @@ async def get_text_from_ffh():
             else:
                 print("No cookie overlay detected. Proceeding...")
 
+            # Explicit waits for full load (addresses the 'bump')
+            await page.wait_for_load_state(
+                "networkidle"
+            )  # Wait for no network activity >500ms
+            await page.wait_for_timeout(3000)  # Extra buffer for JS rendering
+            print("Page loaded. Proceeding to login...")
+
             # Click login link
             login_link = page.locator('a[data-cy="account-menu-login"]')
             await login_link.wait_for(state="visible", timeout=15000)
