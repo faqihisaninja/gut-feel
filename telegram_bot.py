@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from cachetools import TTLCache
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from telegram import Update
@@ -12,6 +13,9 @@ from telegram.ext import (
 )
 from ffh_scraper import get_text_from_ffh, get_fpl_gameweeks
 from agent import summarise_fpl_news
+
+PROCESSED_UPDATES = TTLCache(maxsize=1000, ttl=300)  # Cache for 5 minutes
+
 
 load_dotenv()
 
@@ -142,6 +146,13 @@ app = FastAPI(lifespan=lifespan)
 async def webhook(request: Request):
     update_data = await request.json()
     update = Update.de_json(update_data, application.bot)
+
+    if update.update_id in PROCESSED_UPDATES:
+        print(f"Duplicate update {update.update_id} skipped.")
+        return Response(status_code=200)  # Acknowledge immediately to stop retries
+
+    PROCESSED_UPDATES[update.update_id] = True  # Mark as processed
+
     await application.process_update(update)
     return Response(status_code=200)
 
