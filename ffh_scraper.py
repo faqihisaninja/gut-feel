@@ -82,7 +82,7 @@ async def get_text_from_ffh(update: Update):
                 )
 
             # Navigate to the article
-            await article_link.click()
+            await article_link.click(force=True, timeout=15000)
             await update.message.reply_text("Navigating to article...")
 
             # Wait for article content div
